@@ -23,8 +23,13 @@ whose behavior is defined by a system prompt instead of code.
   `results/matches.csv` and `results/standings.json`. The LLM strategy is
   wired in and included automatically once `ANTHROPIC_API_KEY` is set, but
   hasn't been run live yet either.
+- **v3 (done for classic strategies)**: 8x8 toroidal grid, Nowak-May spatial
+  dynamics ("imitate the best neighbor" each generation), 40 generations,
+  rendered as an animated GIF (`results/spatial_evolution.gif`). Classic
+  strategies only for now — a grid full of LLM cells would be a lot of API
+  calls per run.
 
-See `CLAUDE.md` for full architecture and the v3 (spatial/evolutionary) plan.
+See `CLAUDE.md` for full architecture.
 
 ## Usage
 
@@ -33,6 +38,7 @@ uv sync
 uv run python run_v0.py
 uv run python run_v1.py   # needs ANTHROPIC_API_KEY set
 uv run python run_v2.py   # LLM strategy included only if ANTHROPIC_API_KEY is set
+uv run python run_v3.py
 uv run pytest
 ```
 

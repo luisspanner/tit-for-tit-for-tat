@@ -23,6 +23,8 @@ The research questions this is actually for:
 - `uv run python run_v1.py` — v1 demo: one LLM-backed strategy vs tit-for-tat, 10 rounds (needs `ANTHROPIC_API_KEY`)
 - `uv run python run_v2.py` — v2 demo: full round-robin, writes `results/matches.csv` and `results/standings.json`
   (LLM strategy included automatically only if `ANTHROPIC_API_KEY` is set)
+- `uv run python run_v3.py` — v3 demo: 8x8 spatial grid, 40 generations, writes
+  `results/spatial_evolution.gif`, `results/spatial_legend.json`, `results/spatial_summary.json`
 
 Always invoke through `uv run` — see the README for why a directly-activated
 `python` can silently fail to import `tournament` on this machine.
@@ -70,6 +72,20 @@ Always invoke through `uv run` — see the README for why a directly-activated
   appeared in (both as `strategy_a` and `strategy_b`) and sorts descending.
 - `src/tournament/reporting.py` — `write_results_csv` / `write_standings_json`:
   plain `csv.DictWriter` / `json.dumps` to a path, creating parent dirs as needed.
+- `src/tournament/spatial.py` — `Grid(size, strategy_factories, seed)`: a toroidal
+  (wraparound) grid running Nowak-May spatial dynamics. Each cell holds a strategy
+  instance built from a `Callable[[random.Random], Strategy]` factory (the RNG
+  argument exists so `RandomStrategy` cells can be reseeded deterministically off
+  the grid's own master RNG — every other factory just ignores it). `.step()`
+  computes each cell's total payoff (a `Match` against each of its 8 neighbors,
+  `MATCH_ROUNDS` each) using the *current* grid, then simultaneously updates every
+  cell to imitate whichever cell in its neighborhood (self included) scored
+  highest — ties favor staying put, then the fixed `_NEIGHBOR_OFFSETS` scan order.
+  Grid size must be >= 3 or Moore-neighborhood offsets wrap onto themselves.
+- `src/tournament/visualization.py` — `render_generations_gif`: turns a list of
+  per-generation strategy-name grids into a color-coded animated GIF
+  (`matplotlib` + `Pillow`, `Agg` backend so it needs no display), plus a
+  `strategy name -> hex color` legend JSON alongside it.
 
 ## Build order (do NOT skip ahead)
 
@@ -85,9 +101,11 @@ Always invoke through `uv run` — see the README for why a directly-activated
    strategies via `Tournament`, results in `results/matches.csv` +
    `results/standings.json`. `run_v2.py` auto-includes the LLM strategy only
    if `ANTHROPIC_API_KEY` is set.
-4. **v3 (stretch, only after v2 works) — not started.** Spatial/evolutionary
-   variant — strategies placed on a grid, reproduce proportional to local
-   payoff (Nowak-May dynamics), visualize over generations.
+4. **v3 (stretch) — done for classic strategies.** 8x8 toroidal grid, deterministic
+   Nowak-May "imitate the best neighbor" dynamics, 40 generations, rendered as an
+   animated GIF (`run_v3.py`). LLM cells are not wired into the grid yet — a full
+   grid of LLM-driven cells would mean hundreds/thousands of API calls per run,
+   so this stays classic-only until there's a specific reason to spend on it.
 
 ## Conventions
 
