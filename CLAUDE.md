@@ -32,48 +32,71 @@ Always invoke through `uv run` — see the README for why a directly-activated
 ## Architecture
 
 - `src/tournament/strategies/base.py` — the `Strategy` protocol every player implements:
-  `move(history: list[tuple[Move, Move]]) -> Move`, where `Move` is `Literal["C", "D"]`
-  and `history` is `(my_move, opponent_move)` pairs, oldest first. Both classic and
-  LLM-backed strategies implement this same interface, and are pure functions of the
-  `history` argument — no per-instance mutable state — which is what lets the same
-  strategy instance be reused across every match in a round-robin.
+  `move(history: list[tuple[Move, Move]], context: RoundContext | None = None) -> Move`,
+  where `Move` is `Literal["C", "D"]`, `history` is `(my_move, opponent_move)` pairs
+  (oldest first), and `RoundContext` (`round_index`, `total_rounds`, `.is_last_round`)
+  tells a strategy where it is in the match. `context` defaults to `None` and every
+  classic strategy ignores it — only `LLMStrategy` currently reads it (to mention the
+  final round in its rendered prompt). Strategies are pure functions of their
+  arguments — no per-instance mutable state — which is what lets the same instance be
+  reused across every match in a round-robin.
 - `src/tournament/strategies/classic.py` — `TitForTat`, `AlwaysDefect`,
   `AlwaysCooperate`, `GrimTrigger` (defects forever after the opponent's first
   defection), `Pavlov` (win-stay/lose-shift: repeats its last move after a good
   outcome (`R` or `T`), switches after a bad one (`P` or `S`)), `RandomStrategy`
   (seedable `random.Random` instance, `p_cooperate` controls the coin weighting).
-- `src/tournament/strategies/llm.py` — `LLMStrategy`: renders `history` into a
-  user-message prompt via `render_history`, calls an injected `LLMClient`, parses
-  the raw text response back into a `Move` via `parse_move` (strict: raises
-  `ValueError` rather than silently defaulting on an unparseable response).
-  Optionally takes a `DiskCache` — checked before every network call, keyed on
-  `(system_prompt, history)` so a prompt-wording change invalidates old cache
-  entries instead of serving stale answers under a new prompt.
+- `src/tournament/strategies/llm.py` — `LLMStrategy`: renders `history` (plus
+  `context`, if given) into a user-message prompt via `render_history` — which
+  appends a "this is the final round" notice when `context.is_last_round` is
+  true — calls an injected `LLMClient`, parses the raw text response back into
+  a `Move` via `parse_move` (strict: raises `ValueError` rather than silently
+  defaulting on an unparseable response). Optionally takes a `DiskCache` —
+  checked before every network call, keyed on `(system_prompt, history,
+  is_last_round)` so a prompt-wording change *or* a last-round framing change
+  invalidates old cache entries instead of serving a stale answer under
+  different conditions.
 - `src/tournament/llm_client.py` — `LLMClient` protocol (`complete(system_prompt,
   user_message) -> str`) plus `AnthropicLLMClient`, the only real implementation.
   Tests never import this class — they inject a stub `LLMClient` instead, so no
   test can accidentally reach the network.
 - `src/tournament/cache.py` — `DiskCache` (JSON-backed get/set) and `cache_key`
-  (sha256 over `{prompt, history}`). Whole file gets rewritten on every `set`;
-  fine at this scale.
+  (sha256 over `{prompt, history, is_last_round}`). Whole file gets rewritten
+  on every `set`; fine at this scale.
 - `src/tournament/payoff.py` — the payoff matrix (`T=5, R=3, P=1, S=0`) and
   `score_round(move_a, move_b)`. `validate_payoffs()` runs at import time and
   enforces `T > R > P > S` and `2R > T + S` — the two conditions that make this
   a well-formed Prisoner's Dilemma. Never let a "just try something" edit to
   these constants silently violate them.
-- `src/tournament/match.py` — `Match(strategy_a, strategy_b, rounds)`: runs two
-  strategies against each other, gives each side its own view of history, and
-  returns final scores plus the move log.
-- `src/tournament/tournament.py` — `Tournament(strategies, rounds)`: round-robin
-  over every unordered pair **including each strategy against itself** (a
-  strategy's self-play score is a real signal — e.g. two `GrimTrigger`s always
-  mutually cooperate). `.play()` returns a list of per-match result dicts;
-  `.standings()` aggregates total score per strategy name across every match it
-  appeared in (both as `strategy_a` and `strategy_b`) and sorts descending.
+- `src/tournament/match.py` — `Match(strategy_a, strategy_b, rounds, noise=0.0,
+  rng=None)`: runs two strategies against each other, constructs a `RoundContext`
+  each round and passes it to both `.move()` calls, gives each side its own view
+  of history, and returns final scores plus the move log. `noise` is a
+  "trembling hand" execution-error rate: each strategy's *intended* move is
+  independently flipped with probability `noise` before being scored or
+  recorded — both sides only ever see the actual (possibly flipped) move, never
+  the intent, matching the standard noisy-IPD model. Default `noise=0.0` with a
+  real `random.Random()` is a no-op, so every noise-free result is unaffected.
+  `rng` accepts any object with a `.random()` method, so tests can inject a
+  scripted fake to force an exact sequence of flips (see
+  `tests/test_match.py::test_grim_trigger_locks_into_permanent_defection_after_one_accidental_flip`
+  and its `TitForTat` counterpart — direct, executable proof of the
+  forgiveness-vs-noise story: GrimTrigger locks into permanent mutual defection
+  after one accidental flip, while TitForTat instead falls into a persistent
+  alternating "echo" of exploitation — never both-D, never both-C again, but
+  it still out-scores GrimTrigger's full lock-in over the same match).
+- `src/tournament/tournament.py` — `Tournament(strategies, rounds, noise=0.0,
+  seed=None)`: round-robin over every unordered pair **including each strategy
+  against itself** (a strategy's self-play score is a real signal — e.g. two
+  `GrimTrigger`s always mutually cooperate). `noise`/`seed` are forwarded to
+  every `Match` it builds, sharing one RNG across the whole tournament.
+  `.play()` returns a list of per-match result dicts; `.standings()` aggregates
+  total score per strategy name across every match it appeared in (both as
+  `strategy_a` and `strategy_b`) and sorts descending.
 - `src/tournament/reporting.py` — `write_results_csv` / `write_standings_json`:
   plain `csv.DictWriter` / `json.dumps` to a path, creating parent dirs as needed.
-- `src/tournament/spatial.py` — `Grid(size, strategy_factories, seed)`: a toroidal
-  (wraparound) grid running Nowak-May spatial dynamics. Each cell holds a strategy
+- `src/tournament/spatial.py` — `Grid(size, strategy_factories, seed, noise=0.0)`: a
+  toroidal (wraparound) grid running Nowak-May spatial dynamics; `noise` is
+  forwarded to every internal `Match`, same semantics as above. Each cell holds a strategy
   instance built from a `Callable[[random.Random], Strategy]` factory (the RNG
   argument exists so `RandomStrategy` cells can be reseeded deterministically off
   the grid's own master RNG — every other factory just ignores it). `.step()`
@@ -106,6 +129,29 @@ Always invoke through `uv run` — see the README for why a directly-activated
    animated GIF (`run_v3.py`). LLM cells are not wired into the grid yet — a full
    grid of LLM-driven cells would mean hundreds/thousands of API calls per run,
    so this stays classic-only until there's a specific reason to spend on it.
+5. **Round-context + noise model — done.** `RoundContext` (round_index/total_rounds/
+   is_last_round) threaded through every `Strategy.move()`, plus a per-move
+   "trembling hand" noise rate in `Match`/`Tournament`/`Grid`. Built after a live
+   discussion of *why* `GrimTrigger` beat `TitForTat` in the v3 spatial run
+   surfaced that TFT's "nice/retaliatory/forgiving" reputation is really a
+   noise-robustness story (Nowak & Sigmund), not a universal law — this phase
+   makes that story directly testable in code (see the two hand-verified tests
+   referenced in `match.py`'s entry above) and unblocks the "told this is the
+   last round" research question, the one question that needed a Strategy
+   interface change (the "opponent is AI" question doesn't — that's just a
+   different prompt/flag, still backlog, see below).
+
+**Backlog (not started, not currently planned in a specific order):**
+- An ecological/population-proportional (Axelrod-style replicator dynamics)
+  tournament, to directly compare against the spatial grid's TFT-vs-GrimTrigger
+  outcome outside of a fixed local neighborhood.
+- More strategy variants: Generous TFT (forgives probabilistically), Joss/
+  suspicious-TFT (defects with small unprovoked probability).
+- The actual multi-condition LLM experiment runner: last-round framing in a
+  real run, an "opponent is AI" prompt variant, and structured experiment
+  logging (full transcripts + scores per condition) for real analysis — still
+  blocked on `ANTHROPIC_API_KEY` for live execution, though buildable with the
+  stub client any time.
 
 ## Conventions
 

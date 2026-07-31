@@ -31,11 +31,13 @@ class Grid:
         size: int,
         strategy_factories: dict[str, Callable[[random.Random], Strategy]],
         seed: int | None = None,
+        noise: float = 0.0,
     ) -> None:
         if size < 3:
             raise ValueError("Grid size must be >= 3 so Moore-neighborhood offsets don't wrap onto themselves")
         self.size = size
         self.strategy_factories = strategy_factories
+        self.noise = noise
         self._rng = random.Random(seed)
         names = list(strategy_factories)
         self._cells: list[list[Strategy]] = [
@@ -53,7 +55,7 @@ class Grid:
         total = 0
         for nr, nc in self._neighbor_coords(row, col):
             neighbor = self._cells[nr][nc]
-            score, _, _ = Match(cell, neighbor, rounds=MATCH_ROUNDS).play()
+            score, _, _ = Match(cell, neighbor, rounds=MATCH_ROUNDS, noise=self.noise, rng=self._rng).play()
             total += score
         return total
 

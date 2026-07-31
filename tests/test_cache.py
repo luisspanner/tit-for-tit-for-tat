@@ -31,3 +31,12 @@ def test_cache_key_is_deterministic_and_sensitive_to_inputs() -> None:
     assert key_a == key_b
     assert key_a != key_c
     assert key_a != key_d
+
+
+def test_cache_key_is_sensitive_to_is_last_round() -> None:
+    key_default = cache_key("prompt", [("C", "D")])
+    key_not_last = cache_key("prompt", [("C", "D")], is_last_round=False)
+    key_last = cache_key("prompt", [("C", "D")], is_last_round=True)
+
+    assert key_default == key_not_last
+    assert key_default != key_last

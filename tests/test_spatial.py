@@ -1,6 +1,7 @@
 import pytest
 
-from tournament.spatial import Grid
+from tournament.payoff import P
+from tournament.spatial import MATCH_ROUNDS, Grid
 from tournament.strategies.classic import AlwaysCooperate, AlwaysDefect
 
 FACTORIES = {
@@ -66,3 +67,15 @@ def test_strategy_counts_sum_to_grid_area() -> None:
     counts = grid.strategy_counts()
     assert sum(counts.values()) == 16
     assert set(counts) == set(FACTORIES)
+
+
+def test_noise_forwarded_to_internal_matches() -> None:
+    # Uniform always_cooperate grid: under noise=1.0 every recorded move flips
+    # to D, so every cell's payoff becomes 8 neighbors x MATCH_ROUNDS x P
+    # instead of the noise-free R.
+    grid = Grid(size=3, strategy_factories=FACTORIES, seed=0, noise=1.0)
+    for row in range(3):
+        for col in range(3):
+            grid._cells[row][col] = AlwaysCooperate()
+
+    assert grid._payoff(0, 0) == 8 * MATCH_ROUNDS * P

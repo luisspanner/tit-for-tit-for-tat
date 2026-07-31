@@ -53,3 +53,13 @@ def test_standings_sorted_descending_by_total_score() -> None:
 
     scores = [row["total_score"] for row in standings]
     assert scores == sorted(scores, reverse=True)
+
+
+def test_noise_one_forwarded_to_every_match_flips_all_moves() -> None:
+    strategies = [AlwaysCooperate(), AlwaysCooperate()]
+    tournament = Tournament(strategies, rounds=3, noise=1.0, seed=1)
+    results = tournament.play()
+
+    # Every AlwaysCooperate move actually gets flipped to D under noise=1.0,
+    # so every match scores as mutual defection: P=1/round * 3 rounds = 3.
+    assert all(r["score_a"] == 3 and r["score_b"] == 3 for r in results)

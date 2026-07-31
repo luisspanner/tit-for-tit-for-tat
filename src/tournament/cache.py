@@ -19,6 +19,8 @@ class DiskCache:
         self.path.write_text(json.dumps(self._data, indent=2, sort_keys=True))
 
 
-def cache_key(system_prompt: str, history: list[tuple[str, str]]) -> str:
-    payload = json.dumps({"prompt": system_prompt, "history": history}, sort_keys=True)
+def cache_key(system_prompt: str, history: list[tuple[str, str]], is_last_round: bool = False) -> str:
+    payload = json.dumps(
+        {"prompt": system_prompt, "history": history, "is_last_round": is_last_round}, sort_keys=True
+    )
     return hashlib.sha256(payload.encode()).hexdigest()

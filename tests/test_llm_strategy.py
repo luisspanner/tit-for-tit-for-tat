@@ -3,6 +3,7 @@ from pathlib import Path
 import pytest
 
 from tournament.cache import DiskCache
+from tournament.strategies.base import RoundContext
 from tournament.strategies.llm import LLMStrategy, parse_move, render_history
 
 
@@ -48,6 +49,43 @@ def test_render_history_includes_past_rounds() -> None:
     text = render_history([("C", "D"), ("D", "D")])
     assert "Round 1: You: C, Opponent: D" in text
     assert "Round 2: You: D, Opponent: D" in text
+
+
+def test_render_history_mentions_last_round_only_when_context_says_so() -> None:
+    not_last = RoundContext(round_index=0, total_rounds=5)
+    last = RoundContext(round_index=4, total_rounds=5)
+
+    assert "final round" not in render_history([], context=None).lower()
+    assert "final round" not in render_history([], context=not_last).lower()
+    assert "final round" in render_history([], context=last).lower()
+
+
+def test_llm_strategy_passes_context_through_to_the_rendered_prompt() -> None:
+    client = StubClient(response="D")
+    strategy = LLMStrategy(name="stub", system_prompt="be ruthless", client=client)
+
+    strategy.move([], context=RoundContext(round_index=9, total_rounds=10))
+
+    assert "final round" in client.last_user_message.lower()
+
+
+def test_llm_strategy_cache_key_differs_by_last_round_flag(tmp_path: Path) -> None:
+    cache_path = tmp_path / "cache.json"
+    not_last_client = StubClient(response="C")
+    strategy = LLMStrategy(
+        name="stub", system_prompt="prompt", client=not_last_client, cache=DiskCache(cache_path)
+    )
+    strategy.move([], context=RoundContext(round_index=0, total_rounds=10))
+    assert not_last_client.call_count == 1
+
+    last_client = StubClient(response="D")
+    strategy_last = LLMStrategy(
+        name="stub", system_prompt="prompt", client=last_client, cache=DiskCache(cache_path)
+    )
+    # Same history, but is_last_round differs - must NOT be served from the
+    # non-last-round cache entry, since the rendered prompt actually differs.
+    assert strategy_last.move([], context=RoundContext(round_index=9, total_rounds=10)) == "D"
+    assert last_client.call_count == 1
 
 
 def test_llm_strategy_returns_parsed_move_from_client() -> None:

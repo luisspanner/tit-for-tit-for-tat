@@ -1,13 +1,13 @@
 import random
 
 from tournament.payoff import R, T, score_round
-from tournament.strategies.base import Move
+from tournament.strategies.base import Move, RoundContext
 
 
 class TitForTat:
     name = "tit_for_tat"
 
-    def move(self, history: list[tuple[Move, Move]]) -> Move:
+    def move(self, history: list[tuple[Move, Move]], context: RoundContext | None = None) -> Move:
         if not history:
             return "C"
         _, opponent_last = history[-1]
@@ -17,21 +17,21 @@ class TitForTat:
 class AlwaysDefect:
     name = "always_defect"
 
-    def move(self, history: list[tuple[Move, Move]]) -> Move:
+    def move(self, history: list[tuple[Move, Move]], context: RoundContext | None = None) -> Move:
         return "D"
 
 
 class AlwaysCooperate:
     name = "always_cooperate"
 
-    def move(self, history: list[tuple[Move, Move]]) -> Move:
+    def move(self, history: list[tuple[Move, Move]], context: RoundContext | None = None) -> Move:
         return "C"
 
 
 class GrimTrigger:
     name = "grim_trigger"
 
-    def move(self, history: list[tuple[Move, Move]]) -> Move:
+    def move(self, history: list[tuple[Move, Move]], context: RoundContext | None = None) -> Move:
         if any(opponent_move == "D" for _, opponent_move in history):
             return "D"
         return "C"
@@ -42,7 +42,7 @@ class Pavlov:
 
     name = "pavlov"
 
-    def move(self, history: list[tuple[Move, Move]]) -> Move:
+    def move(self, history: list[tuple[Move, Move]], context: RoundContext | None = None) -> Move:
         if not history:
             return "C"
         my_last, opponent_last = history[-1]
@@ -60,5 +60,5 @@ class RandomStrategy:
         self.p_cooperate = p_cooperate
         self._rng = random.Random(seed)
 
-    def move(self, history: list[tuple[Move, Move]]) -> Move:
+    def move(self, history: list[tuple[Move, Move]], context: RoundContext | None = None) -> Move:
         return "C" if self._rng.random() < self.p_cooperate else "D"

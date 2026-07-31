@@ -1,3 +1,5 @@
+import random
+
 from tournament.match import Match
 from tournament.strategies.base import Strategy
 
@@ -5,15 +7,23 @@ from tournament.strategies.base import Strategy
 class Tournament:
     """Round-robin across a list of strategies, including each strategy against itself."""
 
-    def __init__(self, strategies: list[Strategy], rounds: int = 100) -> None:
+    def __init__(
+        self,
+        strategies: list[Strategy],
+        rounds: int = 100,
+        noise: float = 0.0,
+        seed: int | None = None,
+    ) -> None:
         self.strategies = strategies
         self.rounds = rounds
+        self.noise = noise
+        self._rng = random.Random(seed)
 
     def play(self) -> list[dict]:
         results = []
         for i, strategy_a in enumerate(self.strategies):
             for strategy_b in self.strategies[i:]:
-                match = Match(strategy_a, strategy_b, rounds=self.rounds)
+                match = Match(strategy_a, strategy_b, rounds=self.rounds, noise=self.noise, rng=self._rng)
                 score_a, score_b, _ = match.play()
                 results.append(
                     {
