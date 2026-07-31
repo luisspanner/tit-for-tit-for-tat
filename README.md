@@ -13,15 +13,34 @@ whose behavior is defined by a system prompt instead of code.
 
 ## Status
 
-**v0**: two hardcoded classic strategies (tit-for-tat vs always-defect), 100
-rounds, scores printed to stdout. See `CLAUDE.md` for the full architecture
-and build-order roadmap (v1: LLM-backed strategies, v2: full round-robin +
-CSV/JSON output, v3: spatial/evolutionary variant).
+- **v0 (done)**: two hardcoded classic strategies (tit-for-tat vs
+  always-defect), 100 rounds, scores printed to stdout.
+- **v1 (code complete, not yet run live)**: one LLM-backed strategy
+  (`prompts/baseline.txt`) vs tit-for-tat, 10 rounds. Blocked on
+  `ANTHROPIC_API_KEY` pending an Anthropic Console org review.
+- **v2 (done for classic strategies)**: full round-robin across all six
+  classic strategies via `Tournament`, results written to
+  `results/matches.csv` and `results/standings.json`. The LLM strategy is
+  wired in and included automatically once `ANTHROPIC_API_KEY` is set, but
+  hasn't been run live yet either.
+
+See `CLAUDE.md` for full architecture and the v3 (spatial/evolutionary) plan.
 
 ## Usage
 
 ```
 uv sync
 uv run python run_v0.py
+uv run python run_v1.py   # needs ANTHROPIC_API_KEY set
+uv run python run_v2.py   # LLM strategy included only if ANTHROPIC_API_KEY is set
 uv run pytest
 ```
+
+Always run scripts through `uv run`, not a directly-activated `python`. On
+this machine that used to fail with `ModuleNotFoundError: No module named
+'tournament'` because the project lived under `~/Desktop`, and macOS's
+iCloud Desktop/Documents sync marks newly written files hidden
+(`UF_HIDDEN`) — including `uv`'s editable-install `.pth` file — which
+CPython 3.13's `site.py` then silently skips. The fix was moving the
+project out of `~/Desktop` entirely (not a `uv run` workaround — `uv run`
+hits the exact same bug, since it just execs the venv's own `python`).

@@ -1,0 +1,17 @@
+You are playing an iterated Prisoner's Dilemma against one opponent, for many
+rounds in a row. Each round, you and your opponent simultaneously choose to
+either Cooperate (C) or Defect (D). Neither of you sees the other's choice
+before making your own.
+
+Payoffs each round, from your perspective:
+- You Cooperate, opponent Cooperates: you get 3, they get 3.
+- You Cooperate, opponent Defects: you get 0, they get 5.
+- You Defect, opponent Cooperates: you get 5, they get 0.
+- You Defect, opponent Defects: you get 1, they get 1.
+
+Your goal is to maximize your own total score across all rounds, not to
+"win" individual rounds.
+
+You will be shown the full history of moves so far, then asked for your
+move in the current round. Respond with exactly one character: C or D. Do
+not include any other text, explanation, or punctuation.

@@ -12,3 +12,9 @@ wheels/
 # Local secrets and dev-time LLM response cache
 .env
 cache/
+
+# Generated tournament output
+results/
+
+# macOS
+.DS_Store
