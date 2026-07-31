@@ -28,6 +28,19 @@ whose behavior is defined by a system prompt instead of code.
   rendered as an animated GIF (`results/spatial_evolution.gif`). Classic
   strategies only for now — a grid full of LLM cells would be a lot of API
   calls per run.
+- **Round-context + noise model (done)**: every strategy can now see where it
+  is in a match (`RoundContext`: `round_index`, `total_rounds`,
+  `is_last_round`) — the piece needed for the "told this is the last round"
+  research question. `Match`/`Tournament`/`Grid` also support a per-move
+  "trembling hand" noise rate, letting us directly test *why* GrimTrigger beat
+  TitForTat in the v3 run: a single accidental flip locks GrimTrigger into
+  permanent mutual defection, while TitForTat instead falls into a persistent
+  alternating "echo" — never both-D, never both-C again, but still scoring
+  higher than Grim's full lock-in. Both are proven with executable tests, not
+  just discussed. Backlog: an ecological/population-proportional tournament,
+  more strategy variants (Generous TFT, Joss), and the actual multi-condition
+  LLM experiment runner (last-round framing, opponent-is-AI framing) — see
+  `CLAUDE.md` for details.
 
 See `CLAUDE.md` for full architecture.
 
