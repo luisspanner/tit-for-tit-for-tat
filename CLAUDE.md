@@ -27,6 +27,8 @@ The research questions this is actually for:
   `results/spatial_evolution.gif`, `results/spatial_legend.json`, `results/spatial_summary.json`
 - `uv run python run_noise_sweep.py` — runs the round-robin + spatial grid across a
   range of noise levels, writes `results/noise_sweep_summary.json` and two charts
+- `uv run python run_ecological.py` — 100-generation replicator-dynamics run against
+  the whole mixed population, writes `results/ecological_trajectory.png` + `results/ecological_summary.json`
 
 Always invoke through `uv run` — see the README for why a directly-activated
 `python` can silently fail to import `tournament` on this machine.
@@ -132,6 +134,18 @@ Always invoke through `uv run` — see the README for why a directly-activated
   strategy list — strategies with internal RNG state (`RandomStrategy`,
   `GenerousTitForTat`, `Joss`) need to start fresh at each noise level rather
   than carrying consumed randomness over from the previous level's run.
+- `src/tournament/ecological.py` — `EcologicalTournament(strategies, rounds,
+  noise, seed)`: Axelrod's actual second-tournament methodology — replicator
+  dynamics. Precomputes each ordered pair's average per-round payoff **once**
+  via `Match` (two fixed strategies' expected payoff against each other
+  doesn't change generation to generation, only the population weighting
+  does), then `.run(generations, initial_shares=None)` repeatedly applies the
+  standard replicator update — each strategy's fitness is its population-share-
+  weighted average payoff against everyone (including itself), and its share
+  for the next generation scales by `fitness / population-average fitness` —
+  renormalizing each generation to guard against float drift. Returns the
+  full share trajectory, one dict per generation (index 0 = the initial
+  shares).
 
 ## Build order (do NOT skip ahead)
 
@@ -187,11 +201,20 @@ Always invoke through `uv run` — see the README for why a directly-activated
    the previous phase. In the spatial grid, `endgame_defector` keeps its
    full-grid dominance through 0-20% noise, but at 30% noise `grim_trigger`
    reclaims the entire grid instead - a genuine noise-driven crossover.
+8. **Ecological (population-proportional) tournament — done.**
+   `run_ecological.py` runs the same 9-strategy roster for 100 generations
+   via `EcologicalTournament`, starting from equal shares. Result is
+   qualitatively different from the spatial grid: `always_defect`, `random`,
+   and `joss` go extinct by ~generation 10, but **six** nice strategies
+   (`endgame_defector`, `grim_trigger`, `generous_tit_for_tat`, `pavlov`,
+   `tit_for_tat`, `always_cooperate`) settle into a slowly-shifting
+   coexistence rather than one strategy taking the whole population — no
+   winner-take-all monoculture like the spatial grid produced.
+   `endgame_defector` is still gradually gaining share at generation 100
+   (0.254, up from 0.183 at generation 30), so the population hasn't fully
+   converged to a fixed point in this run.
 
 **Backlog (not started, not currently planned in a specific order):**
-- An ecological/population-proportional (Axelrod-style replicator dynamics)
-  tournament, to directly compare against the spatial grid's outcome outside
-  of a fixed local neighborhood.
 - The actual multi-condition LLM experiment runner: last-round framing in a
   real run, an "opponent is AI" prompt variant, and structured experiment
   logging (full transcripts + scores per condition) for real analysis — still

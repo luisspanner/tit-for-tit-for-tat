@@ -58,9 +58,17 @@ whose behavior is defined by a system prompt instead of code.
   0-20% noise, but `grim_trigger` reclaims the whole grid at 30% noise — a
   genuine crossover, not just a noise-free curiosity.
 
-Backlog: an ecological/population-proportional tournament, and the actual
-multi-condition LLM experiment runner (last-round framing, opponent-is-AI
-framing) — see `CLAUDE.md` for details.
+- **Ecological (population-proportional) tournament (done)**: Axelrod's
+  actual second-tournament methodology — population shares evolve each
+  generation proportional to average payoff against the whole mixed
+  population, not fixed spatial neighbors (`results/ecological_trajectory.png`).
+  Qualitatively different from the spatial grid: `always_defect`/`random`/`joss`
+  go extinct by ~generation 10, but **six** nice strategies settle into a
+  slowly-shifting coexistence instead of one strategy taking the whole
+  population — no winner-take-all monoculture.
+
+Backlog: the actual multi-condition LLM experiment runner (last-round
+framing, opponent-is-AI framing) — see `CLAUDE.md` for details.
 
 See `CLAUDE.md` for full architecture.
 
@@ -73,6 +81,7 @@ uv run python run_v1.py   # needs ANTHROPIC_API_KEY set
 uv run python run_v2.py   # LLM strategy included only if ANTHROPIC_API_KEY is set
 uv run python run_v3.py
 uv run python run_noise_sweep.py
+uv run python run_ecological.py
 uv run pytest
 ```
 
