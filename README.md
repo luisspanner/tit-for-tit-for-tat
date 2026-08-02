@@ -48,10 +48,19 @@ whose behavior is defined by a system prompt instead of code.
   valuable in the spatial grid's short 10-round sub-matches than in the full
   100-round round-robin, a real "shadow of the future" effect.
 
-Backlog: a noise-sweep experiment (does GrimTrigger's/EndgameDefector's edge
-survive real noise?), an ecological/population-proportional tournament, and
-the actual multi-condition LLM experiment runner (last-round framing,
-opponent-is-AI framing) — see `CLAUDE.md` for details.
+- **Noise-sweep experiment (done)**: the round-robin and the spatial grid,
+  both run across `noise = [0.0, 0.02, 0.05, 0.1, 0.2, 0.3]`
+  (`results/noise_sweep_summary.json` + two charts). Confirms the
+  forgiveness-vs-noise story with real numbers: `grim_trigger`'s round-robin
+  lead collapses almost immediately (2598 -> 2079 total score at just 2%
+  noise) while `generous_tit_for_tat` degrades far more gracefully. In the
+  spatial grid, `endgame_defector` keeps its full-grid takeover through
+  0-20% noise, but `grim_trigger` reclaims the whole grid at 30% noise — a
+  genuine crossover, not just a noise-free curiosity.
+
+Backlog: an ecological/population-proportional tournament, and the actual
+multi-condition LLM experiment runner (last-round framing, opponent-is-AI
+framing) — see `CLAUDE.md` for details.
 
 See `CLAUDE.md` for full architecture.
 
@@ -63,6 +72,7 @@ uv run python run_v0.py
 uv run python run_v1.py   # needs ANTHROPIC_API_KEY set
 uv run python run_v2.py   # LLM strategy included only if ANTHROPIC_API_KEY is set
 uv run python run_v3.py
+uv run python run_noise_sweep.py
 uv run pytest
 ```
 

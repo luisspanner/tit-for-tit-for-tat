@@ -25,6 +25,8 @@ The research questions this is actually for:
   (LLM strategy included automatically only if `ANTHROPIC_API_KEY` is set)
 - `uv run python run_v3.py` — v3 demo: 8x8 spatial grid, 40 generations, writes
   `results/spatial_evolution.gif`, `results/spatial_legend.json`, `results/spatial_summary.json`
+- `uv run python run_noise_sweep.py` — runs the round-robin + spatial grid across a
+  range of noise levels, writes `results/noise_sweep_summary.json` and two charts
 
 Always invoke through `uv run` — see the README for why a directly-activated
 `python` can silently fail to import `tournament` on this machine.
@@ -118,7 +120,18 @@ Always invoke through `uv run` — see the README for why a directly-activated
 - `src/tournament/visualization.py` — `render_generations_gif`: turns a list of
   per-generation strategy-name grids into a color-coded animated GIF
   (`matplotlib` + `Pillow`, `Agg` backend so it needs no display), plus a
-  `strategy name -> hex color` legend JSON alongside it.
+  `strategy name -> hex color` legend JSON alongside it. `render_line_chart`:
+  a generic one-line-per-series chart (used by the noise sweep below),
+  reusing the same `_PALETTE` so a strategy has the same color across every
+  artifact.
+- `src/tournament/experiments.py` — `sweep_round_robin(build_strategies,
+  rounds, noise_levels, seed)` / `sweep_spatial(size, strategy_factories,
+  generations, noise_levels, seed)`: run a fresh `Tournament`/`Grid` at each
+  noise level, returning standings/final-counts keyed by noise level.
+  `sweep_round_robin` takes a zero-arg *builder* callable, not a shared
+  strategy list — strategies with internal RNG state (`RandomStrategy`,
+  `GenerousTitForTat`, `Joss`) need to start fresh at each noise level rather
+  than carrying consumed randomness over from the previous level's run.
 
 ## Build order (do NOT skip ahead)
 
@@ -162,13 +175,20 @@ Always invoke through `uv run` — see the README for why a directly-activated
    a much bigger structural edge when interactions are short (the "shadow of
    the future" effect from game theory: looking ahead matters less, and
    knowing when the game ends matters more, the shorter the game is).
+7. **Noise-sweep experiment — done.** `run_noise_sweep.py` runs the full
+   9-strategy roster across `NOISE_LEVELS = [0.0, 0.02, 0.05, 0.1, 0.2, 0.3]`
+   in both the round-robin `Tournament` and the spatial `Grid`, writing
+   `results/noise_sweep_summary.json` and two charts (`results/
+   noise_sweep_roundrobin.png`, `results/noise_sweep_spatial.png`). Results:
+   in the round-robin, `grim_trigger`'s lead collapses almost immediately
+   (2598 -> 2079 total score at just 2% noise) while `generous_tit_for_tat`
+   degrades much more gracefully - direct empirical confirmation of the
+   forgiveness-vs-noise story, not just the two hand-picked unit tests from
+   the previous phase. In the spatial grid, `endgame_defector` keeps its
+   full-grid dominance through 0-20% noise, but at 30% noise `grim_trigger`
+   reclaims the entire grid instead - a genuine noise-driven crossover.
 
 **Backlog (not started, not currently planned in a specific order):**
-- A noise-sweep experiment across both `Tournament` and `Grid` (varying
-  `noise` over a range and charting how standings/spatial dominance shift) —
-  to turn the round-context/noise foundations into an empirical answer for
-  whether GrimTrigger's edge over TFT (and now EndgameDefector's grid
-  takeover) survives real noise, not just noise-free determinism.
 - An ecological/population-proportional (Axelrod-style replicator dynamics)
   tournament, to directly compare against the spatial grid's outcome outside
   of a fixed local neighborhood.

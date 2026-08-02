@@ -46,3 +46,24 @@ def render_generations_gif(
     anim = animation.ArtistAnimation(fig, frames, interval=seconds_per_frame * 1000)
     anim.save(gif_path, writer=animation.PillowWriter(fps=1 / seconds_per_frame))
     plt.close(fig)
+
+
+def render_line_chart(
+    x_values: list[float],
+    series: dict[str, list[float]],
+    path: Path,
+    xlabel: str,
+    ylabel: str,
+) -> None:
+    """One line per series key, sharing the same strategy-color palette as the GIF."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+
+    fig, ax = plt.subplots()
+    for i, (name, values) in enumerate(series.items()):
+        ax.plot(x_values, values, label=name, color=_PALETTE[i % len(_PALETTE)], marker="o")
+    ax.set_xlabel(xlabel)
+    ax.set_ylabel(ylabel)
+    ax.legend(fontsize="small")
+
+    fig.savefig(path)
+    plt.close(fig)
