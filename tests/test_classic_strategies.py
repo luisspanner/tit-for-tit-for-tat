@@ -1,7 +1,11 @@
+from tournament.strategies.base import RoundContext
 from tournament.strategies.classic import (
     AlwaysCooperate,
     AlwaysDefect,
+    EndgameDefector,
+    GenerousTitForTat,
     GrimTrigger,
+    Joss,
     Pavlov,
     RandomStrategy,
     TitForTat,
@@ -98,3 +102,77 @@ def test_random_strategy_p_cooperate_zero_always_defects() -> None:
 def test_random_strategy_p_cooperate_one_always_cooperates() -> None:
     always_cooperate_random = RandomStrategy(p_cooperate=1.0, seed=1)
     assert all(always_cooperate_random.move([]) == "C" for _ in range(10))
+
+
+def test_generous_tit_for_tat_with_zero_generosity_behaves_like_tit_for_tat() -> None:
+    # generosity=0.0 -> never forgives -> identical to plain TFT.
+    gtft = GenerousTitForTat(generosity=0.0)
+    history: list[tuple[str, str]] = []
+    opponent_moves = ["C", "D", "D", "C"]
+    expected_moves = ["C", "C", "D", "D"]
+
+    actual_moves = []
+    for opponent_move in opponent_moves:
+        move = gtft.move(history)
+        actual_moves.append(move)
+        history.append((move, opponent_move))
+
+    assert actual_moves == expected_moves
+
+
+def test_generous_tit_for_tat_with_full_generosity_always_cooperates() -> None:
+    # generosity=1.0 -> always forgives a defection, and mirrors cooperation ->
+    # equivalent to AlwaysCooperate regardless of what the opponent does.
+    gtft = GenerousTitForTat(generosity=1.0, seed=1)
+    assert gtft.move([]) == "C"
+    assert gtft.move([("C", "D")]) == "C"
+    assert gtft.move([("C", "D"), ("C", "D")]) == "C"
+
+
+def test_joss_with_zero_defection_probability_behaves_like_tit_for_tat() -> None:
+    joss = Joss(defection_probability=0.0)
+    history: list[tuple[str, str]] = []
+    opponent_moves = ["C", "D", "D", "C"]
+    expected_moves = ["C", "C", "D", "D"]
+
+    actual_moves = []
+    for opponent_move in opponent_moves:
+        move = joss.move(history)
+        actual_moves.append(move)
+        history.append((move, opponent_move))
+
+    assert actual_moves == expected_moves
+
+
+def test_joss_with_full_defection_probability_always_defects() -> None:
+    # defection_probability=1.0 -> every time it would cooperate, it defects
+    # instead, and it never softens an existing retaliation -> equivalent to
+    # AlwaysDefect regardless of what the opponent does.
+    joss = Joss(defection_probability=1.0, seed=1)
+    assert joss.move([]) == "D"
+    assert joss.move([("D", "C")]) == "D"
+    assert joss.move([("D", "D")]) == "D"
+
+
+def test_endgame_defector_behaves_like_tit_for_tat_without_last_round_context() -> None:
+    endgame = EndgameDefector()
+    history: list[tuple[str, str]] = []
+    opponent_moves = ["C", "D", "D", "C"]
+    expected_moves = ["C", "C", "D", "D"]
+
+    actual_moves = []
+    for i, opponent_move in enumerate(opponent_moves):
+        context = RoundContext(round_index=i, total_rounds=len(opponent_moves) + 5)  # never the last round
+        move = endgame.move(history, context)
+        actual_moves.append(move)
+        history.append((move, opponent_move))
+
+    assert actual_moves == expected_moves
+
+
+def test_endgame_defector_defects_on_the_last_round_regardless_of_history() -> None:
+    endgame = EndgameDefector()
+    # Even with a fully cooperative history, the last round is an unconditional defection.
+    history = [("C", "C"), ("C", "C"), ("C", "C")]
+    context = RoundContext(round_index=3, total_rounds=4)
+    assert endgame.move(history, context) == "D"

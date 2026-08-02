@@ -37,10 +37,21 @@ whose behavior is defined by a system prompt instead of code.
   permanent mutual defection, while TitForTat instead falls into a persistent
   alternating "echo" — never both-D, never both-C again, but still scoring
   higher than Grim's full lock-in. Both are proven with executable tests, not
-  just discussed. Backlog: an ecological/population-proportional tournament,
-  more strategy variants (Generous TFT, Joss), and the actual multi-condition
-  LLM experiment runner (last-round framing, opponent-is-AI framing) — see
-  `CLAUDE.md` for details.
+  just discussed.
+- **New strategy variants (done)**: `GenerousTitForTat` (forgives
+  probabilistically), `Joss` (defects unprovoked with small probability), and
+  `EndgameDefector` (the first strategy to actually use `RoundContext` —
+  defects unconditionally on the last round). Wired into both the
+  round-robin and the spatial grid. Rerunning v3 with these produced a
+  striking result: `EndgameDefector` sweeps the **entire** grid by
+  generation 3 — its "free unpunished last-round defection" is 10x more
+  valuable in the spatial grid's short 10-round sub-matches than in the full
+  100-round round-robin, a real "shadow of the future" effect.
+
+Backlog: a noise-sweep experiment (does GrimTrigger's/EndgameDefector's edge
+survive real noise?), an ecological/population-proportional tournament, and
+the actual multi-condition LLM experiment runner (last-round framing,
+opponent-is-AI framing) — see `CLAUDE.md` for details.
 
 See `CLAUDE.md` for full architecture.
 

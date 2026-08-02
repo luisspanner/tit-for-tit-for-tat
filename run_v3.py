@@ -2,7 +2,17 @@ import json
 from pathlib import Path
 
 from tournament.spatial import Grid
-from tournament.strategies.classic import AlwaysCooperate, AlwaysDefect, GrimTrigger, Pavlov, RandomStrategy, TitForTat
+from tournament.strategies.classic import (
+    AlwaysCooperate,
+    AlwaysDefect,
+    EndgameDefector,
+    GenerousTitForTat,
+    GrimTrigger,
+    Joss,
+    Pavlov,
+    RandomStrategy,
+    TitForTat,
+)
 from tournament.visualization import render_generations_gif
 
 GRID_SIZE = 8
@@ -17,6 +27,9 @@ STRATEGY_FACTORIES = {
     "grim_trigger": lambda rng: GrimTrigger(),
     "pavlov": lambda rng: Pavlov(),
     "random": lambda rng: RandomStrategy(seed=rng.getrandbits(32)),
+    "generous_tit_for_tat": lambda rng: GenerousTitForTat(seed=rng.getrandbits(32)),
+    "joss": lambda rng: Joss(seed=rng.getrandbits(32)),
+    "endgame_defector": lambda rng: EndgameDefector(),
 }
 
 

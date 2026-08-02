@@ -5,7 +5,10 @@ from tournament.reporting import write_results_csv, write_standings_json
 from tournament.strategies.classic import (
     AlwaysCooperate,
     AlwaysDefect,
+    EndgameDefector,
+    GenerousTitForTat,
     GrimTrigger,
+    Joss,
     Pavlov,
     RandomStrategy,
     TitForTat,
@@ -26,6 +29,9 @@ def build_strategies() -> list:
         GrimTrigger(),
         Pavlov(),
         RandomStrategy(seed=42),
+        GenerousTitForTat(seed=43),
+        Joss(seed=44),
+        EndgameDefector(),
     ]
 
     if os.environ.get("ANTHROPIC_API_KEY"):

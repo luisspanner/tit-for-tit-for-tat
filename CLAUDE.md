@@ -44,7 +44,17 @@ Always invoke through `uv run` — see the README for why a directly-activated
   `AlwaysCooperate`, `GrimTrigger` (defects forever after the opponent's first
   defection), `Pavlov` (win-stay/lose-shift: repeats its last move after a good
   outcome (`R` or `T`), switches after a bad one (`P` or `S`)), `RandomStrategy`
-  (seedable `random.Random` instance, `p_cooperate` controls the coin weighting).
+  (seedable `random.Random` instance, `p_cooperate` controls the coin weighting),
+  `GenerousTitForTat` (TFT that forgives a defection with probability
+  `generosity` instead of always retaliating — `generosity=0.0`/`1.0` reduce
+  exactly to `TitForTat`/`AlwaysCooperate`), `Joss` (TFT that opportunistically
+  defects unprovoked with probability `defection_probability` —
+  `0.0`/`1.0` reduce to `TitForTat`/`AlwaysDefect`), `EndgameDefector` (plays
+  TFT but unconditionally defects when `context.is_last_round` — the **first**
+  classic strategy to actually *read* `RoundContext` rather than just accept
+  and ignore it). `GenerousTitForTat`/`Joss`/`RandomStrategy` all carry a
+  seeded `random.Random` instance and are the only classic strategies that
+  aren't pure functions of `history` alone.
 - `src/tournament/strategies/llm.py` — `LLMStrategy`: renders `history` (plus
   `context`, if given) into a user-message prompt via `render_history` — which
   appends a "this is the final round" notice when `context.is_last_round` is
@@ -140,13 +150,28 @@ Always invoke through `uv run` — see the README for why a directly-activated
    last round" research question, the one question that needed a Strategy
    interface change (the "opponent is AI" question doesn't — that's just a
    different prompt/flag, still backlog, see below).
+6. **New strategy variants — done.** `GenerousTitForTat`, `Joss`, and
+   `EndgameDefector` (see architecture entry above), wired into both
+   `run_v2.py`'s round-robin roster and `run_v3.py`'s spatial grid (which
+   also needed its color palette extended from 7 to 10 colors —
+   `visualization.py`'s `_PALETTE`). Running v3 with the 9-strategy roster
+   produced a striking result: `EndgameDefector` sweeps the **entire** 8x8
+   grid by generation 3. The mechanism: each spatial generation is a short
+   `MATCH_ROUNDS=10`-round sub-match, so the "free, unpunished last-round
+   defection" is 1-in-10 rounds there vs. 1-in-100 in the full round-robin —
+   a much bigger structural edge when interactions are short (the "shadow of
+   the future" effect from game theory: looking ahead matters less, and
+   knowing when the game ends matters more, the shorter the game is).
 
 **Backlog (not started, not currently planned in a specific order):**
+- A noise-sweep experiment across both `Tournament` and `Grid` (varying
+  `noise` over a range and charting how standings/spatial dominance shift) —
+  to turn the round-context/noise foundations into an empirical answer for
+  whether GrimTrigger's edge over TFT (and now EndgameDefector's grid
+  takeover) survives real noise, not just noise-free determinism.
 - An ecological/population-proportional (Axelrod-style replicator dynamics)
-  tournament, to directly compare against the spatial grid's TFT-vs-GrimTrigger
-  outcome outside of a fixed local neighborhood.
-- More strategy variants: Generous TFT (forgives probabilistically), Joss/
-  suspicious-TFT (defects with small unprovoked probability).
+  tournament, to directly compare against the spatial grid's outcome outside
+  of a fixed local neighborhood.
 - The actual multi-condition LLM experiment runner: last-round framing in a
   real run, an "opponent is AI" prompt variant, and structured experiment
   logging (full transcripts + scores per condition) for real analysis — still
