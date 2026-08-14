@@ -67,3 +67,28 @@ def render_line_chart(
 
     fig.savefig(path)
     plt.close(fig)
+
+
+def render_bar_chart(
+    labels: list[str],
+    series: dict[str, list[float]],
+    path: Path,
+    ylabel: str,
+) -> None:
+    """Grouped bar chart, one group of bars per label, one bar per series key."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+
+    fig, ax = plt.subplots()
+    num_series = len(series)
+    bar_width = 0.8 / max(num_series, 1)
+    x = range(len(labels))
+    for i, (name, values) in enumerate(series.items()):
+        offsets = [xi + i * bar_width for xi in x]
+        ax.bar(offsets, values, width=bar_width, label=name, color=_PALETTE[i % len(_PALETTE)])
+    ax.set_xticks([xi + bar_width * (num_series - 1) / 2 for xi in x])
+    ax.set_xticklabels(labels, rotation=30, ha="right")
+    ax.set_ylabel(ylabel)
+    ax.legend(fontsize="small")
+
+    fig.savefig(path, bbox_inches="tight")
+    plt.close(fig)

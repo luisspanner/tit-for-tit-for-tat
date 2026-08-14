@@ -1,6 +1,6 @@
-# CLAUDE.md
+# AGENTS.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+This file provides guidance to Codex (Codex.ai/code) when working with code in this repository.
 
 ## What this is
 
@@ -90,7 +90,7 @@ Always invoke through `uv run` — see the README for why a directly-activated
   change, *or* a different model behind the same prompt each invalidate cache
   entries independently instead of one silently serving another's cached
   answer. Also takes an optional `model_name: str | None` — a free-text label
-  (e.g. `"claude-sonnet-5"`, `"openai/gpt-oss-120b"`) with no effect on
+  (e.g. `"Codex-sonnet-5"`, `"openai/gpt-oss-120b"`) with no effect on
   behavior beyond being threaded into the cache key and (via `Tournament`,
   see below) into every match result, so results can later be grouped/filtered
   by model/sophistication tier for the two model-comparison research questions
@@ -175,7 +175,7 @@ Always invoke through `uv run` — see the README for why a directly-activated
 - `src/tournament/model_catalog.py` — `MODEL_SIZE_BILLIONS: dict[str, float |
   None]`, a hand-maintained `model_name -> approximate param count` lookup
   covering every roster entry (`None` where the count isn't published or
-  confirmed, e.g. `claude-sonnet-5`, `qwen3.5:cloud`). Pure metadata consumed
+  confirmed, e.g. `Codex-sonnet-5`, `qwen3.5:cloud`). Pure metadata consumed
   by the webapp's size-vs-cooperation/score charts; doesn't touch
   `LLMStrategy` or the roster's construction logic.
 - `src/tournament/cache.py` — `DiskCache` (JSON-backed get/set) and `cache_key`
@@ -456,7 +456,7 @@ Always invoke through `uv run` — see the README for why a directly-activated
       data yet," and n-badges (`.badge.n-low`/default `.badge`) next to any
       stat resting on a small sample. Reuses `.panel`/`.caveat` — no new
       container pattern, per `DESIGN.md`. New **Research Questions** view
-      maps all 5 `CLAUDE.md`-listed research questions to a live
+      maps all 5 `AGENTS.md`-listed research questions to a live
       open/partial/answered status computed from whatever data already
       exists (`GET /api/last-round-experiment`, new, is what lets RQ2 go
       from permanently-open to answered once `last_round_experiment.py`
@@ -604,7 +604,7 @@ opponent-is-AI experiment, and model selection/last-round-in-webapp):**
   deterministic layer's limits are actually felt, not preemptively.
 - **Engineering polish**: CI (GitHub Actions running `uv run pytest` on
   push), finish the in-progress README rewrite (already underway per git
-  status) for external readers who aren't Claude Code.
+  status) for external readers who aren't Codex.
 
 ## Conventions
 

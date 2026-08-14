@@ -1,7 +1,7 @@
 import json
 from pathlib import Path
 
-from tournament.visualization import render_generations_gif
+from tournament.visualization import render_bar_chart, render_generations_gif
 
 
 def test_render_generations_gif_produces_valid_gif_and_legend(tmp_path: Path) -> None:
@@ -21,3 +21,17 @@ def test_render_generations_gif_produces_valid_gif_and_legend(tmp_path: Path) ->
 
     legend = json.loads(legend_path.read_text())
     assert set(legend) == {"a", "b"}
+
+
+def test_render_bar_chart_writes_a_file(tmp_path: Path) -> None:
+    path = tmp_path / "nested" / "bars.png"
+
+    render_bar_chart(
+        labels=["model-a", "model-b"],
+        series={"baseline": [0.8, 0.6], "ai_revealed": [0.5, 0.4]},
+        path=path,
+        ylabel="cooperation rate",
+    )
+
+    assert path.exists()
+    assert path.stat().st_size > 0

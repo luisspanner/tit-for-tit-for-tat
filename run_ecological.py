@@ -1,38 +1,16 @@
 import json
+import uuid
 from pathlib import Path
 
+from tournament.archive import archive_run
+from tournament.classic_roster import build_classic_strategies as build_strategies
 from tournament.ecological import EcologicalTournament
-from tournament.strategies.classic import (
-    AlwaysCooperate,
-    AlwaysDefect,
-    EndgameDefector,
-    GenerousTitForTat,
-    GrimTrigger,
-    Joss,
-    Pavlov,
-    RandomStrategy,
-    TitForTat,
-)
 from tournament.visualization import render_line_chart
 
 ROUNDS = 100
 GENERATIONS = 100
 SEED = 7
 RESULTS_DIR = Path(__file__).parent / "results"
-
-
-def build_strategies() -> list:
-    return [
-        TitForTat(),
-        AlwaysDefect(),
-        AlwaysCooperate(),
-        GrimTrigger(),
-        Pavlov(),
-        RandomStrategy(seed=42),
-        GenerousTitForTat(seed=43),
-        Joss(seed=44),
-        EndgameDefector(),
-    ]
 
 
 def main() -> None:
@@ -49,6 +27,9 @@ def main() -> None:
         xlabel="generation", ylabel="population share",
     )
     (RESULTS_DIR / "ecological_summary.json").write_text(json.dumps(history, indent=2))
+    archive_run(
+        RESULTS_DIR, str(uuid.uuid4()), "ecological", ["ecological_trajectory.png", "ecological_summary.json"]
+    )
 
     print(f"Ran {GENERATIONS} generations, starting from equal shares.")
     print("Final population shares:")

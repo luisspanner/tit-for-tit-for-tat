@@ -51,6 +51,55 @@ def test_match_passes_round_context_with_correct_index_and_last_round_flag() -> 
     assert spy_a.contexts_seen == spy_b.contexts_seen
 
 
+def test_on_round_callback_fires_once_per_round_with_recorded_moves() -> None:
+    calls = []
+    match = Match(
+        TitForTat(),
+        AlwaysDefect(),
+        rounds=5,
+        on_round=lambda ri, ma, mb, ra, rb: calls.append((ri, ma, mb)),
+    )
+    _, _, history = match.play()
+
+    assert calls == [(i, *history[i]) for i in range(5)]
+
+
+def test_on_round_reasoning_is_none_for_classic_strategies() -> None:
+    reasons = []
+    match = Match(
+        TitForTat(),
+        AlwaysDefect(),
+        rounds=3,
+        on_round=lambda ri, ma, mb, ra, rb: reasons.append((ra, rb)),
+    )
+    match.play()
+
+    assert reasons == [(None, None)] * 3
+
+
+def test_on_round_receives_reasoning_for_llm_shaped_strategy() -> None:
+    class ReasoningStub:
+        name = "reasoning_stub"
+
+        def __init__(self) -> None:
+            self.last_reasoning = None
+
+        def move(self, history, context=None):
+            self.last_reasoning = "because reciprocity"
+            return "C"
+
+    reasons = []
+    match = Match(
+        ReasoningStub(),
+        AlwaysDefect(),
+        rounds=2,
+        on_round=lambda ri, ma, mb, ra, rb: reasons.append((ra, rb)),
+    )
+    match.play()
+
+    assert reasons == [("because reciprocity", None), ("because reciprocity", None)]
+
+
 def test_noise_zero_is_a_no_op_matching_the_default() -> None:
     rounds = 10
     match = Match(TitForTat(), AlwaysDefect(), rounds=rounds, noise=0.0, rng=random.Random(123))

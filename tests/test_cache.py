@@ -40,3 +40,14 @@ def test_cache_key_is_sensitive_to_is_last_round() -> None:
 
     assert key_default == key_not_last
     assert key_default != key_last
+
+
+def test_cache_key_is_sensitive_to_model() -> None:
+    key_default = cache_key("prompt", [("C", "D")])
+    key_empty_model = cache_key("prompt", [("C", "D")], model="")
+    key_model_a = cache_key("prompt", [("C", "D")], model="model-a")
+    key_model_b = cache_key("prompt", [("C", "D")], model="model-b")
+
+    assert key_default == key_empty_model
+    assert key_model_a != key_model_b
+    assert key_default != key_model_a

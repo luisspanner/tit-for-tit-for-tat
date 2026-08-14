@@ -1,18 +1,10 @@
-import os
+import uuid
 from pathlib import Path
 
+from tournament.archive import archive_run
+from tournament.classic_roster import build_classic_strategies
+from tournament.llm_roster import build_llm_strategies
 from tournament.reporting import write_results_csv, write_standings_json
-from tournament.strategies.classic import (
-    AlwaysCooperate,
-    AlwaysDefect,
-    EndgameDefector,
-    GenerousTitForTat,
-    GrimTrigger,
-    Joss,
-    Pavlov,
-    RandomStrategy,
-    TitForTat,
-)
 from tournament.tournament import Tournament
 
 ROUNDS = 100
@@ -22,30 +14,10 @@ CACHE_DIR = Path(__file__).parent / "cache"
 
 
 def build_strategies() -> list:
-    strategies = [
-        TitForTat(),
-        AlwaysDefect(),
-        AlwaysCooperate(),
-        GrimTrigger(),
-        Pavlov(),
-        RandomStrategy(seed=42),
-        GenerousTitForTat(seed=43),
-        Joss(seed=44),
-        EndgameDefector(),
-    ]
+    strategies = build_classic_strategies()
 
-    if os.environ.get("ANTHROPIC_API_KEY"):
-        from tournament.cache import DiskCache
-        from tournament.llm_client import AnthropicLLMClient
-        from tournament.strategies.llm import LLMStrategy
-
-        system_prompt = (PROMPTS_DIR / "baseline.txt").read_text()
-        cache = DiskCache(CACHE_DIR / "baseline.json")
-        strategies.append(
-            LLMStrategy(name="llm_baseline", system_prompt=system_prompt, client=AnthropicLLMClient(), cache=cache)
-        )
-    else:
-        print("ANTHROPIC_API_KEY not set - running classic strategies only, no LLM strategy included.\n")
+    system_prompt = (PROMPTS_DIR / "baseline.txt").read_text()
+    strategies.extend(build_llm_strategies(system_prompt, CACHE_DIR))
 
     return strategies
 
@@ -58,6 +30,7 @@ def main() -> None:
 
     write_results_csv(results, RESULTS_DIR / "matches.csv")
     write_standings_json(standings, RESULTS_DIR / "standings.json")
+    archive_run(RESULTS_DIR, str(uuid.uuid4()), "run_v2_round_robin", ["matches.csv", "standings.json"])
 
     print(f"{'strategy':<20}{'total_score':>12}")
     for row in standings:

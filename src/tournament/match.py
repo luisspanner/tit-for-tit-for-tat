@@ -1,4 +1,5 @@
 import random
+from typing import Callable
 
 from tournament.payoff import score_round
 from tournament.strategies.base import Move, RoundContext, Strategy
@@ -16,12 +17,14 @@ class Match:
         rounds: int = 100,
         noise: float = 0.0,
         rng: random.Random | None = None,
+        on_round: Callable[[int, Move, Move, str | None, str | None], None] | None = None,
     ) -> None:
         self.strategy_a = strategy_a
         self.strategy_b = strategy_b
         self.rounds = rounds
         self.noise = noise
         self._rng = rng if rng is not None else random.Random()
+        self.on_round = on_round
 
     def _execute(self, intended: Move) -> Move:
         if self._rng.random() < self.noise:
@@ -38,7 +41,14 @@ class Match:
             context = RoundContext(round_index=round_index, total_rounds=self.rounds)
 
             intended_a = self.strategy_a.move(history_a, context)
+            # Captured right after move() returns, before any noise flip - this is
+            # the strategy's reasoning for its *intended* move. If noise later flips
+            # the executed move, the reasoning still describes the original intent,
+            # not necessarily what actually got played. Dormant in practice: every
+            # current LLM-involving run path uses noise=0.0.
+            reason_a = getattr(self.strategy_a, "last_reasoning", None)
             intended_b = self.strategy_b.move(history_b, context)
+            reason_b = getattr(self.strategy_b, "last_reasoning", None)
 
             move_a = self._execute(intended_a)
             move_b = self._execute(intended_b)
@@ -49,5 +59,8 @@ class Match:
 
             history_a.append((move_a, move_b))
             history_b.append((move_b, move_a))
+
+            if self.on_round is not None:
+                self.on_round(round_index, move_a, move_b, reason_a, reason_b)
 
         return score_a, score_b, history_a

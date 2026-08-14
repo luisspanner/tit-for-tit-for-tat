@@ -1,0 +1,250 @@
+<!--
+THESIS: a tournament console, not an admin template — standings, model-size
+research charts, and a live match log share one graphite/mono "own world"
+built directly from this codebase's own vocabulary (snake_case strategy
+names, C/D moves, the payoff matrix's gold-for-highest-payoff logic).
+OWN-WORLD: near-black graphite ground, IBM Plex Sans/Mono, one warm-gold
+accent (payoff), teal/coral semantic pair for cooperate/defect only.
+STORY: a researcher opens the page, reads who's winning and why, drills into
+one model pairing's actual transcript, then starts a new live run and
+watches it stream in.
+FIRST VIEWPORT: fixed left sidebar (wordmark + six-item nav, mono labels) at
+248px, main content at 12/8 padding rhythm; Standings loads first — ranked
+table left-aligned, provider-colored score bar chart beside it.
+FORM: Operate-mode dashboard, restrained color strategy, no concept-seed
+roll run (internal single-user tool, not a Persuade/Experience surface —
+see chat disclosure).
+FINISH: unreviewed and undocumented is unfinished; this build ends with the
+finish review, the verdict, and DESIGN.md.
+-->
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tournament Console</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<div class="shell">
+  <nav class="sidebar">
+    <p class="wordmark"><span>pd</span>://tournament</p>
+    <p class="tagline">iterated prisoner's dilemma</p>
+
+    <ul class="nav" id="nav">
+      <li><button class="nav-item" data-view="standings">
+        <svg viewBox="0 0 16 16" fill="none"><path d="M2 14V6M6.5 14V2M11 14V9M15 14V4" stroke-width="1.6" stroke-linecap="round"/></svg>
+        standings
+      </button></li>
+      <li><button class="nav-item" data-view="comparison">
+        <svg viewBox="0 0 16 16" fill="none"><circle cx="4" cy="11" r="1.4" stroke-width="1.6"/><circle cx="9" cy="6" r="1.4" stroke-width="1.6"/><circle cx="13" cy="9" r="1.4" stroke-width="1.6"/><path d="M2 14h12" stroke-width="1.6" stroke-linecap="round"/></svg>
+        model comparison
+      </button></li>
+      <li><button class="nav-item" data-view="explorer">
+        <svg viewBox="0 0 16 16" fill="none"><rect x="2" y="3" width="12" height="3" rx="0.8" stroke-width="1.6"/><rect x="2" y="7.5" width="12" height="3" rx="0.8" stroke-width="1.6"/><rect x="2" y="12" width="7" height="2" rx="0.8" stroke-width="1.6"/></svg>
+        matchup explorer
+      </button></li>
+      <li><button class="nav-item" data-view="spatial">
+        <svg viewBox="0 0 16 16" fill="none"><rect x="1.5" y="1.5" width="4.2" height="4.2" rx="0.6" stroke-width="1.5"/><rect x="6.9" y="1.5" width="4.2" height="4.2" rx="0.6" stroke-width="1.5"/><rect x="1.5" y="6.9" width="4.2" height="4.2" rx="0.6" stroke-width="1.5"/><rect x="6.9" y="6.9" width="4.2" height="4.2" rx="0.6" stroke-width="1.5"/></svg>
+        spatial grid
+      </button></li>
+      <li><button class="nav-item" data-view="sweeps">
+        <svg viewBox="0 0 16 16" fill="none"><path d="M1.5 12 L5.5 7 L8.5 9.5 L14.5 3" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        noise &amp; ecological
+      </button></li>
+      <li><button class="nav-item" data-view="research">
+        <svg viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6" stroke-width="1.6"/><path d="M8 11v.01M6.3 6.2a1.7 1.7 0 1 1 2.7 1.4c-.6.4-1 .8-1 1.6" stroke-width="1.6" stroke-linecap="round"/></svg>
+        research questions
+      </button></li>
+      <li><button class="nav-item" data-view="live">
+        <svg viewBox="0 0 16 16" fill="none"><path d="M4 2.5 L13 8 L4 13.5 Z" stroke-width="1.6" stroke-linejoin="round"/></svg>
+        live run
+      </button></li>
+    </ul>
+
+    <div class="sidebar-footer">
+      <span class="status-dot" id="sidebar-status-dot"></span><span id="sidebar-status-text">idle</span>
+    </div>
+  </nav>
+
+  <main class="main">
+
+    <!-- ===================== Standings ===================== -->
+    <section class="view active" id="view-standings">
+      <div class="view-header">
+        <h1 class="view-title">Standings</h1>
+        <p class="view-subtitle">Total score across the most recent round-robin. Every classic strategy plays every other strategy, including itself; LLM strategies carry their provider and model.</p>
+      </div>
+      <div id="standings-takeaway"></div>
+      <div class="panel-row">
+        <div class="panel">
+          <p class="panel-title">Ranked strategies</p>
+          <table class="data-table" id="standings-table">
+            <thead><tr><th></th><th>strategy</th><th>model</th><th class="num">total score</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+        <div class="panel">
+          <p class="panel-title">Total score by strategy</p>
+          <div class="chart-box tall"><canvas id="standings-chart"></canvas></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================== Model comparison ===================== -->
+    <section class="view" id="view-comparison">
+      <div class="view-header">
+        <h1 class="view-title">Model comparison</h1>
+        <p class="view-subtitle">Does a bigger model converge to cooperation faster or more stably — and when a big model plays a small one, does it exploit the mismatch? Built from per-round transcripts of LLM-involving matches.</p>
+      </div>
+      <div id="comparison-takeaway"></div>
+      <div class="panel-row">
+        <div class="panel">
+          <p class="panel-title">Model size vs. total score</p>
+          <div class="chart-box"><canvas id="size-score-chart"></canvas></div>
+        </div>
+        <div class="panel">
+          <p class="panel-title">Model size vs. cooperation rate</p>
+          <div class="chart-box"><canvas id="size-coop-chart"></canvas></div>
+        </div>
+      </div>
+      <div class="panel">
+        <p class="panel-title">Cooperation rate over the course of a match, by model</p>
+        <div class="chart-box tall"><canvas id="convergence-chart"></canvas></div>
+      </div>
+      <div id="last-round-takeaway"></div>
+      <div class="panel">
+        <p class="panel-title">Matchup matrix — row's score against column</p>
+        <div id="heatmap-takeaway"></div>
+        <div id="heatmap-wrap"></div>
+      </div>
+    </section>
+
+    <!-- ===================== Matchup explorer ===================== -->
+    <section class="view" id="view-explorer">
+      <div class="view-header">
+        <h1 class="view-title">Matchup explorer</h1>
+        <p class="view-subtitle">Read one match's actual move sequence instead of just its final score.</p>
+      </div>
+      <div class="explorer-layout">
+        <div class="panel">
+          <p class="panel-title">Matches with a transcript</p>
+          <div class="transcript-list" id="transcript-list"></div>
+        </div>
+        <div class="panel">
+          <p class="panel-title" id="transcript-title">select a match</p>
+          <div id="transcript-detail"><p class="empty-state">Choose a match on the left to see its round-by-round moves.</p></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================== Spatial grid ===================== -->
+    <section class="view" id="view-spatial">
+      <div class="view-header">
+        <h1 class="view-title">Spatial grid</h1>
+        <p class="view-subtitle">Nowak–May "imitate the best neighbor" dynamics on a toroidal grid — classic strategies only.</p>
+      </div>
+      <div id="spatial-takeaway"></div>
+      <div class="panel-row">
+        <div class="panel">
+          <p class="panel-title">Evolution</p>
+          <img class="spatial-gif" id="spatial-gif" src="/results/spatial_evolution.gif" alt="Spatial grid evolution">
+          <div class="legend-grid" id="spatial-legend"></div>
+        </div>
+        <div class="panel">
+          <p class="panel-title">Final generation counts</p>
+          <div class="chart-box"><canvas id="spatial-chart"></canvas></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================== Noise & ecological ===================== -->
+    <section class="view" id="view-sweeps">
+      <div class="view-header">
+        <h1 class="view-title">Noise &amp; ecological</h1>
+        <p class="view-subtitle">Robustness under a "trembling hand" execution-error rate, and population dynamics under replicator selection.</p>
+      </div>
+      <div id="sweeps-takeaway"></div>
+      <div class="panel">
+        <p class="panel-title">Round-robin total score vs. noise rate</p>
+        <div class="chart-box"><canvas id="noise-chart"></canvas></div>
+      </div>
+      <div class="panel">
+        <p class="panel-title">Population share vs. generation (ecological tournament)</p>
+        <div class="chart-box tall"><canvas id="ecological-chart"></canvas></div>
+      </div>
+    </section>
+
+    <!-- ===================== Research questions ===================== -->
+    <section class="view" id="view-research">
+      <div class="view-header">
+        <h1 class="view-title">Research questions</h1>
+        <p class="view-subtitle">The five questions this whole project is for, and whether the current results say anything about them yet.</p>
+      </div>
+      <div id="research-questions-list"></div>
+    </section>
+
+    <!-- ===================== Live run ===================== -->
+    <section class="view" id="view-live">
+      <div class="view-header">
+        <h1 class="view-title">Live run</h1>
+        <p class="view-subtitle">Starts a real tournament in the background and streams match and round progress as it happens.</p>
+      </div>
+      <div class="panel-row">
+        <div class="panel">
+          <p class="panel-title">Configure</p>
+          <form id="run-form">
+            <div class="field">
+              <label for="experiment-select">experiment</label>
+              <select id="experiment-select">
+                <option value="llm_round_robin">LLM round robin</option>
+                <option value="classic_round_robin">classic round robin</option>
+                <option value="spatial">spatial grid</option>
+                <option value="noise_sweep">noise sweep</option>
+                <option value="ecological">ecological tournament</option>
+                <option value="last_round_experiment">last-round experiment (told vs untold)</option>
+              </select>
+            </div>
+            <div class="field" id="rounds-field">
+              <label for="rounds-input">rounds</label>
+              <input type="number" id="rounds-input" min="1" value="20">
+            </div>
+            <div class="field" id="repeats-field">
+              <label for="repeats-input">repeats per model</label>
+              <input type="number" id="repeats-input" min="1" value="5">
+            </div>
+            <div class="checkbox-row" id="include-classics-row">
+              <input type="checkbox" id="include-classics-checkbox">
+              <label for="include-classics-checkbox">include classic strategies</label>
+            </div>
+            <div class="field" id="models-field">
+              <label>models</label>
+              <div id="models-checkboxes" class="checkbox-group"></div>
+            </div>
+            <p class="caveat">Only one run at a time (the free Ollama Cloud tier allows one cloud model in flight). A run keeps going even if you close this tab or navigate away — there is no stop button yet.</p>
+            <button type="submit" class="btn btn-primary" id="start-run-btn">start run</button>
+          </form>
+        </div>
+        <div class="panel">
+          <p class="panel-title">Progress</p>
+          <div class="progress-bar"><div class="progress-bar-fill" id="progress-fill"></div></div>
+          <p class="mono" id="progress-text" style="color: var(--text-tertiary); font-size: var(--text-xs);">no run yet</p>
+        </div>
+      </div>
+      <div class="panel">
+        <p class="panel-title">Event log</p>
+        <div class="log" id="event-log"><p class="empty-state">Start a run to see live match and round events here.</p></div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<script src="/static/insights.js"></script>
+<script src="/static/dashboard.js"></script>
+</body>
+</html>

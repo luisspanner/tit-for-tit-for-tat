@@ -1,36 +1,16 @@
 import json
+import uuid
 from pathlib import Path
 
+from tournament.archive import archive_run
+from tournament.classic_roster import CLASSIC_STRATEGY_FACTORIES as STRATEGY_FACTORIES
 from tournament.spatial import Grid
-from tournament.strategies.classic import (
-    AlwaysCooperate,
-    AlwaysDefect,
-    EndgameDefector,
-    GenerousTitForTat,
-    GrimTrigger,
-    Joss,
-    Pavlov,
-    RandomStrategy,
-    TitForTat,
-)
 from tournament.visualization import render_generations_gif
 
 GRID_SIZE = 8
 GENERATIONS = 40
 SEED = 7
 RESULTS_DIR = Path(__file__).parent / "results"
-
-STRATEGY_FACTORIES = {
-    "tit_for_tat": lambda rng: TitForTat(),
-    "always_defect": lambda rng: AlwaysDefect(),
-    "always_cooperate": lambda rng: AlwaysCooperate(),
-    "grim_trigger": lambda rng: GrimTrigger(),
-    "pavlov": lambda rng: Pavlov(),
-    "random": lambda rng: RandomStrategy(seed=rng.getrandbits(32)),
-    "generous_tit_for_tat": lambda rng: GenerousTitForTat(seed=rng.getrandbits(32)),
-    "joss": lambda rng: Joss(seed=rng.getrandbits(32)),
-    "endgame_defector": lambda rng: EndgameDefector(),
-}
 
 
 def main() -> None:
@@ -53,6 +33,12 @@ def main() -> None:
 
     summary = [{"generation": i, "counts": counts} for i, counts in enumerate(counts_by_generation)]
     (RESULTS_DIR / "spatial_summary.json").write_text(json.dumps(summary, indent=2))
+    archive_run(
+        RESULTS_DIR,
+        str(uuid.uuid4()),
+        "spatial",
+        ["spatial_evolution.gif", "spatial_legend.json", "spatial_summary.json"],
+    )
 
     print(f"Ran {GENERATIONS} generations on a {GRID_SIZE}x{GRID_SIZE} grid.")
     print("Final strategy counts:", counts_by_generation[-1])

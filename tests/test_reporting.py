@@ -16,7 +16,15 @@ def test_write_results_csv_roundtrips(tmp_path: Path) -> None:
         rows = list(csv.DictReader(f))
 
     assert rows == [
-        {"strategy_a": "tit_for_tat", "strategy_b": "always_defect", "rounds": "10", "score_a": "18", "score_b": "23"}
+        {
+            "strategy_a": "tit_for_tat",
+            "strategy_b": "always_defect",
+            "rounds": "10",
+            "score_a": "18",
+            "score_b": "23",
+            "model_a": "",
+            "model_b": "",
+        }
     ]
 
 

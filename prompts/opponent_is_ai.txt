@@ -12,6 +12,8 @@ Payoffs each round, from your perspective:
 Your goal is to maximize your own total score across all rounds, not to
 "win" individual rounds.
 
+Note: your opponent in this game is also an AI system, not a human.
+
 You will be shown the full history of moves so far, then asked for your
 move in the current round. Respond in the format: <C or D> - <one-sentence
 reason>, e.g. "C - reciprocating their last cooperation." Always put the
