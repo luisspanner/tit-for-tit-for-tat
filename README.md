@@ -66,9 +66,64 @@ whose behavior is defined by a system prompt instead of code.
   go extinct by ~generation 10, but **six** nice strategies settle into a
   slowly-shifting coexistence instead of one strategy taking the whole
   population — no winner-take-all monoculture.
+- **Multi-provider/multi-model LLM roster (code complete, not yet run live)**:
+  a second `LLMClient` implementation (`OpenAICompatibleLLMClient`) for any
+  OpenAI-chat-completions-compatible provider, with factories for Groq and
+  Ollama (local and cloud) alongside the existing Anthropic strategy. Every
+  configured LLM strategy now plays every classic strategy *and* every other
+  LLM strategy (including each other), and results carry a `model_name` per
+  strategy so they can be filtered by model — built for two new questions:
+  does a larger model converge to cooperation faster/more stably, and does a
+  large model exploit a small one it's paired against.
+- **Ollama Cloud + expanded Groq roster + live web dashboard (code complete,
+  live-verified)**: Groq expanded to a 4-model size ladder (8B-120B);
+  "Ollama" now primarily means Ollama Cloud (hosted, `OLLAMA_API_KEY`), with
+  local Ollama kept as an independent option. Added a transcript layer
+  (`results/llm_transcripts.jsonl`) so the model-comparison questions can see
+  cooperation *emerge over rounds*, not just final scores. Added a full local
+  web dashboard (`run_webapp.py`) — standings, model-size research charts, a
+  per-match transcript explorer, the spatial GIF, noise-sweep/ecological
+  charts, and a live-run panel that starts a real tournament and streams
+  match/round progress in the browser via Server-Sent Events. A live 20-round
+  run across all four configured models (2 Groq tiers, `gemma4:31b-cloud`,
+  local `qwen2.5`) completed with zero errors, confirming the roster and Groq
+  pacing work in practice.
+- **Last-round announcement A/B experiment (done)**: `run_last_round_experiment.py`
+  runs each configured model both "told" (standard last-round notice) and
+  "untold" (notice withheld even on the true last round) against a
+  never-defects-first opponent panel (`TitForTat`/`AlwaysCooperate`), repeated
+  several times per pairing, and reports a told-vs-untold last-round
+  defect-rate z-test per model — the "does behavior change when told this is
+  the last round" research question is now directly answerable from data, not
+  just theorized. Smallest models tested so far (`llama-3.1-8b-instant`, local
+  `qwen2.5`) showed 0% last-round defection under *both* conditions, while
+  `llama-3.3-70b-versatile` and `gemma4:31b-cloud` clearly differentiated
+  (100% told vs. 0% untold) — a real floor-effect signal worth more repeat
+  data to confirm.
+- **Opponent-is-AI A/B experiment (done)**: `run_opponent_is_ai_experiment.py`
+  + `prompts/opponent_is_ai.txt` mirror the last-round experiment's shape for
+  the "does behavior change when told the opponent is an AI" question,
+  comparing aggregate cooperation rate (no single critical round exists for
+  this framing).
+- **Per-move reasoning capture (done)**: `LLMStrategy` now asks for
+  `<C or D> - <reason>` and threads the parsed reason through
+  `Match`/`Tournament`'s callbacks into the transcript JSONL and the
+  dashboard's transcript explorer (shown as a tooltip on each move).
+- **"So-what" interpretation layer + run history (done)**: the dashboard now
+  states its own deterministic, rule-based takeaways per view instead of
+  requiring an LLM read of the charts, plus a **Research Questions** view
+  that maps all 5 research questions above to a live open/partial/answered
+  status computed from whatever data already exists. Every live run's output
+  files are also archived to `results/runs/<run_id>/` (survives dashboard
+  restarts), not just overwritten by the next run.
+- **Model selection in the live-run panel (done)**: the dashboard's Live Run
+  form can now scope a run to a subset of configured models (useful for
+  cost/time control) and supports launching the last-round experiment
+  directly from the browser, not just the CLI.
 
-Backlog: the actual multi-condition LLM experiment runner (last-round
-framing, opponent-is-AI framing) — see `CLAUDE.md` for details.
+See `CLAUDE.md` for the full build-order history, architecture, and current
+backlog (a noise x last-round combined experiment, an LLM-powered "smart
+summary" upgrade to the so-what layer, and CI/engineering polish).
 
 See `CLAUDE.md` for full architecture.
 
@@ -77,13 +132,28 @@ See `CLAUDE.md` for full architecture.
 ```
 uv sync
 uv run python run_v0.py
-uv run python run_v1.py   # needs ANTHROPIC_API_KEY set
-uv run python run_v2.py   # LLM strategy included only if ANTHROPIC_API_KEY is set
+uv run python run_v1.py   # needs ANTHROPIC_API_KEY / GROQ_API_KEY / OLLAMA_API_KEY / OLLAMA_ENABLED
+uv run python run_v2.py   # each LLM strategy included only if its provider is configured
 uv run python run_v3.py
 uv run python run_noise_sweep.py
 uv run python run_ecological.py
+uv run python run_last_round_experiment.py      # told-vs-untold last-round A/B experiment
+uv run python run_opponent_is_ai_experiment.py  # opponent-is-AI A/B experiment
+uv run python run_webapp.py   # dashboard at http://127.0.0.1:8000
 uv run pytest
 ```
+
+`run_v1.py`/`run_v2.py`/the dashboard's live-run panel all include one LLM
+strategy per configured provider — `ANTHROPIC_API_KEY`, `GROQ_API_KEY`,
+`OLLAMA_API_KEY` (Ollama Cloud), and `OLLAMA_ENABLED=1` (local Ollama, plus a
+server actually running on `localhost:11434`) are independent and any subset
+can be set; unset providers are skipped with a printed notice, not an error.
+Ollama Cloud's free tier allows only one cloud model in flight at a time —
+the tournament's fully sequential match loop and the dashboard's one-run-at-a-
+time guard both exist partly to guarantee that.
+
+`run_webapp.py` does not hot-reload — restart the process after any backend
+or frontend code change before trusting what the browser shows.
 
 Always run scripts through `uv run`, not a directly-activated `python`. On
 this machine that used to fail with `ModuleNotFoundError: No module named
